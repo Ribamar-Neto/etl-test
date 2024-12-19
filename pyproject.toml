@@ -12,6 +12,7 @@ dependencies = [
     "psycopg2>=2.9.10",
     "psycopg2-binary>=2.9.10",
     "httpx>=0.28.1",
+    "pandas>=2.2.3",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
