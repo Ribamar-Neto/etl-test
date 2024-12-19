@@ -1,8 +1,8 @@
-from src.db_config.database import Base
+from src.db_config.fonte.database import Base
 from sqlalchemy import Column, Float, DateTime, Integer
 
 
-class Fonte(Base):
+class Data(Base):
     __tablename__ = 'data'
     
     id = Column(Integer, primary_key=True)
