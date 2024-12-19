@@ -3,7 +3,7 @@ from typing import Annotated
 from sqlalchemy.orm import Session
 from src.db_config.models import Fonte
 from fastapi import FastAPI, Depends, HTTPException, Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from src.db_config.models import Base
 from src.db_config.database import engine_for_source_db, SessionLocal
 from starlette import status
@@ -20,8 +20,8 @@ def get_db():
     finally:
         db.close()
 
-db_dependency = Annotated[Session, Depends(get_db)]
 
+db_dependency = Annotated[Session, Depends(get_db)]
 
 
 class DataRequest(BaseModel):
