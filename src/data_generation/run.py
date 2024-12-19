@@ -3,7 +3,7 @@ import random
 import httpx
 import asyncio
 
-API_URL = "http://localhost:8000/all"
+API_URL = "http://localhost:8000/data"
 
 
 def generate_random_data(num_days=10):

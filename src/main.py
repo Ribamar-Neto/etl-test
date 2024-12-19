@@ -30,9 +30,17 @@ class DataRequest(BaseModel):
 	wind_speed: float
 
 
-@app.get('/all', status_code=status.HTTP_200_OK)
+@app.get('/data', status_code=status.HTTP_200_OK)
 async def read_all(db: db_dependency):
     return db.query(Data).all()
+
+
+@app.get('/data/{data_id}', status_code=status.HTTP_200_OK)
+async def read_data(db: db_dependency, data_id: int = Path(gt=0)): # bd fica antes dos outros parâmetros.
+    data_model = db.query(Data).filter(Data.id == data_id).first() # first(): pega o 1º. Paa o "for".
+    if data_model is not None:
+        return data_model
+    raise HTTPException(status_code=404, detail='Data not found')
 
 
 @app.post('/data', status_code=status.HTTP_201_CREATED)
