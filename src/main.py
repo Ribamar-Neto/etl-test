@@ -33,8 +33,12 @@ class DataRequest(BaseModel):
 @app.get('/data', status_code=status.HTTP_200_OK)
 async def read_all(
     db: db_dependency,
-    start_date: Optional[str] = Query("2024-12-19T17:00:00+00:00", alias="start"),
-    end_date: Optional[str] = Query("2024-12-29T16:59:00+00:00", alias="end"),
+    start_date: Optional[str] = Query("2024-12-19T17:00:00+00:00"),
+    end_date: Optional[str] = Query("2024-12-29T16:59:00+00:00"),
+    fields: Optional[list[str]] = Query(
+        None,
+        description="Lista de campos a serem retornados. Exemplo: ['timestamp', 'power']"
+    ),
     ):
     query = db.query(Data)
 
@@ -46,7 +50,23 @@ async def read_all(
         end_date_obj = datetime.fromisoformat(end_date)  # Usando fromisoformat para tratar datas no formato ISO 8601
         query = query.filter(Data.timestamp <= end_date_obj)
     
-    return query.all()
+    if fields:
+        valid_columns = {column.name for column in Data.__table__.columns}
+        selected_fields = [field for field in fields if field in valid_columns]
+
+        if not selected_fields:
+            raise HTTPException(
+                status_code=400,
+                detail="Nenhum dos campos fornecidos é válido."
+            )
+
+        query = query.with_entities(*[getattr(Data, field) for field in selected_fields])
+    else:
+        selected_fields = [column.name for column in Data.__table__.columns]
+
+    results = query.all()
+
+    return [dict(zip(selected_fields, row)) for row in results]
 
 
 @app.get('/data/{data_id}', status_code=status.HTTP_200_OK)
