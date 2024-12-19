@@ -1,11 +1,11 @@
 from datetime import datetime
 from typing import Annotated 
 from sqlalchemy.orm import Session
-from src.models import Fonte
+from src.db_config.models import Fonte
 from fastapi import FastAPI, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
-from src.models import Base
-from src.database import engine_for_source_db, SessionLocal
+from src.db_config.models import Base
+from src.db_config.database import engine_for_source_db, SessionLocal
 from starlette import status
 
 
@@ -37,7 +37,16 @@ async def read_all(db: db_dependency):
 
 
 @app.post('/data', status_code=status.HTTP_201_CREATED)
-async def create_todo(db: db_dependency, data_request: DataRequest):
+async def create_data(db: db_dependency, data_request: DataRequest):
     data_model = Fonte(**data_request.model_dump())
     db.add(data_model)
+    db.commit()
+
+
+@app.delete('/{data_id}', status_code = status.HTTP_204_NO_CONTENT)
+async def delete_data(db: db_dependency, data_id: int = Path(gt=0)):
+    data_model = db.query(Fonte).filter(Fonte.id == data_id).first()
+    if data_model is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Data not found')
+    db.query(Fonte).filter(Fonte.id == data_id).delete()
     db.commit()
