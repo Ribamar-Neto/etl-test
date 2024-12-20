@@ -35,27 +35,23 @@ def save_aggregated_data(session, aggregated_df):
         session (Session): Sessão do SQLAlchemy.
         aggregated_df (pd.DataFrame): Dados agregados.
     """
-    for signal_name in SIGNALS:
-        # Obter o sinal correspondente
-        signal = session.query(Signal).filter(Signal.name == signal_name).first()
-        if not signal:
-            raise Exception(f"Sinal {signal_name} não encontrado.")
-        
-        # Filtrar as colunas relevantes para o sinal
-        for agg_type in ['mean', 'min', 'max', 'std']:
-            column_name = f"{signal_name}_{agg_type}"
-            if column_name not in aggregated_df.columns:
-                raise Exception(f"Coluna {column_name} não encontrada nos dados agregados.")
-
-            # Iterar pelos dados e salvar no banco
-            for _, row in aggregated_df.iterrows():
-                data_entry = Data(
-                    timestamp=row['timestamp'],
-                    signal_id=signal.id,
-                    value=row[column_name],
-                    agg_type=agg_type,
-                )
-                session.add(data_entry)
+    for _, row in aggregated_df.iterrows():
+        for signal_name in SIGNALS:
+            # Obter o sinal correspondente
+            signal = session.query(Signal).filter(Signal.name == signal_name).first()
+            if not signal:
+                raise Exception(f"Sinal {signal_name} não encontrado.")
+            
+            # Criar uma entrada para cada agregação (mean, min, max, std)
+            data_entry = Data(
+                timestamp=row['timestamp'],
+                signal_id=signal.id,
+                mean=row[f'{signal_name}_mean'],
+                min=row[f'{signal_name}_min'],
+                max=row[f'{signal_name}_max'],
+                std=row[f'{signal_name}_std']
+            )
+            session.add(data_entry)
     session.commit()
     print("Dados agregados salvos na tabela 'data'.")
 
@@ -117,11 +113,17 @@ def aggregate_data(data: list):
     
     df.set_index('timestamp', inplace=True)
     
-    aggregation_rules = {signal: ["mean", "min", "max", "std"] for signal in SIGNALS}
-    aggregated_df = df.resample("10T").agg(aggregation_rules)
-    aggregated_df.columns = [
-            f"{col[0]}_{col[1]}" for col in aggregated_df.columns
-        ]
+    aggregated_data = {}
+    
+    for signal in SIGNALS:
+        aggregated_data[f'{signal}_mean'] = df[signal].resample('10min').mean()
+        aggregated_data[f'{signal}_min'] = df[signal].resample('10min').min()
+        aggregated_data[f'{signal}_max'] = df[signal].resample('10min').max()
+        aggregated_data[f'{signal}_std'] = df[signal].resample('10min').std()
+    
+    aggregated_df = pd.DataFrame(aggregated_data)
+    
+    # Resetando o índice para que o timestamp seja uma coluna normal
     aggregated_df.reset_index(inplace=True)
 
     print(f"Dados agregados em intervalos de 10 minutos:\n{aggregated_df}")
