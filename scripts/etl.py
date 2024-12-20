@@ -4,7 +4,11 @@ import httpx
 import pandas as pd
 from sqlalchemy.orm import Session
 
-from src.db_config.alvo.database import Base, SessionLocal, engine_for_target_db
+from src.db_config.alvo.database import (
+    Base,
+    SessionLocal,
+    engine_for_target_db,
+)
 from src.db_config.alvo.models import Data, Signal
 
 API_URL = "http://localhost:8000/data"
@@ -21,7 +25,9 @@ def ensure_signals_exist(session: Session) -> None:
         session (Session): Sessão do SQLAlchemy.
     """
     for signal_name in SIGNALS:
-        signal = session.query(Signal).filter(Signal.name == signal_name).first()
+        signal = (
+            session.query(Signal).filter(Signal.name == signal_name).first()
+        )
         if not signal:
             new_signal = Signal(name=signal_name)
             session.add(new_signal)
@@ -29,7 +35,9 @@ def ensure_signals_exist(session: Session) -> None:
     print("Sinais garantidos na tabela 'signal'.")
 
 
-def save_aggregated_data(session: Session, aggregated_df: pd.DataFrame) -> None:
+def save_aggregated_data(
+    session: Session, aggregated_df: pd.DataFrame
+) -> None:
     """Salva os dados agregados na tabela `data`.
 
     Args:
@@ -39,7 +47,11 @@ def save_aggregated_data(session: Session, aggregated_df: pd.DataFrame) -> None:
     for _, row in aggregated_df.iterrows():
         for signal_name in SIGNALS:
             # Obter o sinal correspondente
-            signal = session.query(Signal).filter(Signal.name == signal_name).first()
+            signal = (
+                session.query(Signal)
+                .filter(Signal.name == signal_name)
+                .first()
+            )
             if not signal:
                 raise Exception(f"Sinal {signal_name} não encontrado.")
 
@@ -73,7 +85,12 @@ def extract_data_for_date(date: str) -> pd.DataFrame:
         params = {
             "start": start_date,
             "end": end_date,
-            "fields": ["timestamp", "wind_speed", "power", "ambient_temperature"],
+            "fields": [
+                "timestamp",
+                "wind_speed",
+                "power",
+                "ambient_temperature",
+            ],
         }
         response = httpx.get(API_URL, params=params)
         response.raise_for_status()
@@ -113,7 +130,7 @@ def aggregate_data(data: list) -> pd.DataFrame:
     df = pd.DataFrame(data)
     df["timestamp"] = pd.to_datetime(df["timestamp"])
 
-    df.set_index("timestamp")
+    df = df.set_index("timestamp")
 
     aggregated_data = {}
 
@@ -126,7 +143,7 @@ def aggregate_data(data: list) -> pd.DataFrame:
     aggregated_df = pd.DataFrame(aggregated_data)
 
     # Resetando o índice para que o timestamp seja uma coluna normal
-    aggregated_df.reset_index()
+    aggregated_df.reset_index(inplace=True)
 
     print(f"Dados agregados em intervalos de 10 minutos:\n{aggregated_df}")
     return aggregated_df

@@ -38,7 +38,9 @@ async def send_data_to_api(records: list[dict[Any, Any]]) -> None:
             response = await client.post(API_URL, json=record)
 
             if response.status_code != 201:
-                print(f"Failed to insert data: {response.status_code}, {response.text}")
+                print(
+                    f"Failed to insert data: {response.status_code}, {response.text}"  # noqa: E501
+                )
 
 
 async def generate_and_send_data(num_days: int = 10) -> None:

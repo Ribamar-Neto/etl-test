@@ -41,7 +41,7 @@ async def read_all(
     end_date: str | None = Query("2024-12-29T16:59:00+00:00"),
     fields: list[str] | None = Query(
         ["timestamp", "power", "ambient_temperature", "wind_speed"],
-        description="Lista de campos a serem retornados. Exemplo: ['timestamp', 'power']",
+        description="Lista de campos a serem retornados. Exemplo: ['timestamp', 'power']",  # noqa: E501
     ),
 ) -> list[dict]:
     """Reads all the data registries from the Fonte DB by a time interval.
@@ -58,7 +58,7 @@ async def read_all(
 
     Returns:
         _type_: Data registries.
-    """
+    """  # noqa: E501
     query = db.query(Data)
 
     if start_date:
@@ -78,9 +78,14 @@ async def read_all(
         selected_fields = [field for field in fields if field in valid_columns]
 
         if not selected_fields:
-            raise HTTPException(status_code=400, detail="Nenhum dos campos fornecidos é válido.")
+            raise HTTPException(
+                status_code=400,
+                detail="Nenhum dos campos fornecidos é válido.",
+            )
 
-        query = query.with_entities(*[getattr(Data, field) for field in selected_fields])
+        query = query.with_entities(
+            *[getattr(Data, field) for field in selected_fields]
+        )
     else:
         selected_fields = [column.name for column in Data.__table__.columns]
 
@@ -102,7 +107,7 @@ async def read_data(db: db_dependency, data_id: int = Path(gt=0)) -> dict:
 
     Returns:
         _type_: Data object.
-    """
+    """  # noqa: E501
     data_model = db.query(Data).filter(Data.id == data_id).first()
     if data_model is not None:
         return data_model
@@ -127,14 +132,16 @@ async def delete_data(db: db_dependency, data_id: int = Path(gt=0)) -> None:
     """Delete a data registry by ID.
 
     Args:
-        db (Annotated[db_dependency, Depends): DB dependency to access the database.
+        db (Annotated[db_dependency, Depends): DB dependency to access the database. # noqa: E501
         data_id (Annotated[int, Path, optional): ID of the data registry. Defaults to 0)].
 
     Raises:
         HTTPException: Raised when the ID isn't valid.
-    """
+    """  # noqa: E501
     data_model = db.query(Data).filter(Data.id == data_id).first()
     if data_model is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Data not found"
+        )
     db.query(Data).filter(Data.id == data_id).delete()
     db.commit()
