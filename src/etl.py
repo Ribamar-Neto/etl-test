@@ -1,8 +1,64 @@
 import httpx
 import pandas as pd
 from datetime import datetime
+from db_config.alvo.database import Base, engine_for_target_db, SessionLocal
+from db_config.alvo.models import Signal, Data
 
 API_URL = "http://localhost:8000/data"
+
+SIGNALS = ["wind_speed", "power", "ambient_temperature"]
+
+Base.metadata.create_all(bind=engine_for_target_db)
+
+
+def ensure_signals_exist(session):
+    """
+    Garante que os sinais padrão existam na tabela `signal`.
+    
+    Args:
+        session (Session): Sessão do SQLAlchemy.
+    """
+    for signal_name in SIGNALS:
+        signal = session.query(Signal).filter(Signal.name == signal_name).first()
+        if not signal:
+            new_signal = Signal(name=signal_name)
+            session.add(new_signal)
+    session.commit()
+    print("Sinais garantidos na tabela 'signal'.")
+
+
+def save_aggregated_data(session, aggregated_df):
+    """
+    Salva os dados agregados na tabela `data`.
+    
+    Args:
+        session (Session): Sessão do SQLAlchemy.
+        aggregated_df (pd.DataFrame): Dados agregados.
+    """
+    for signal_name in SIGNALS:
+        # Obter o sinal correspondente
+        signal = session.query(Signal).filter(Signal.name == signal_name).first()
+        if not signal:
+            raise Exception(f"Sinal {signal_name} não encontrado.")
+        
+        # Filtrar as colunas relevantes para o sinal
+        for agg_type in ['mean', 'min', 'max', 'std']:
+            column_name = f"{signal_name}_{agg_type}"
+            if column_name not in aggregated_df.columns:
+                raise Exception(f"Coluna {column_name} não encontrada nos dados agregados.")
+
+            # Iterar pelos dados e salvar no banco
+            for _, row in aggregated_df.iterrows():
+                data_entry = Data(
+                    timestamp=row['timestamp'],
+                    signal_id=signal.id,
+                    value=row[column_name],
+                    agg_type=agg_type,
+                )
+                session.add(data_entry)
+    session.commit()
+    print("Dados agregados salvos na tabela 'data'.")
+
 
 def extract_data_for_date(date: str):
     """
@@ -27,7 +83,6 @@ def extract_data_for_date(date: str):
         response.raise_for_status()
         
         data = response.json()
-        print(f"Dados extraídos para {date}: {len(data)} registros encontrados.")
         
         filtered_data = [
             record for record in data
@@ -41,6 +96,7 @@ def extract_data_for_date(date: str):
     except httpx.HTTPStatusError as e:
         print(f"Erro de status HTTP: {e.response.status_code}")
         return []
+
 
 def aggregate_data(data: list):
     """
@@ -61,10 +117,11 @@ def aggregate_data(data: list):
     
     df.set_index('timestamp', inplace=True)
     
-    aggregated_df = df.resample('10T').agg({
-        'wind_speed': ['mean', 'min', 'max', 'std'],
-        'power': ['mean', 'min', 'max', 'std']
-    })
+    aggregation_rules = {signal: ["mean", "min", "max", "std"] for signal in SIGNALS}
+    aggregated_df = df.resample("10T").agg(aggregation_rules)
+    aggregated_df.columns = [
+            f"{col[0]}_{col[1]}" for col in aggregated_df.columns
+        ]
     aggregated_df.reset_index(inplace=True)
 
     print(f"Dados agregados em intervalos de 10 minutos:\n{aggregated_df}")
@@ -77,6 +134,10 @@ if __name__ == "__main__":
         datetime.strptime(input_date, "%Y-%m-%d")
         extracted_data = extract_data_for_date(input_date)
         aggregated_data = aggregate_data(extracted_data)
-        print(f"Dados finais:\n{aggregated_data}")
+        with SessionLocal() as session:
+            ensure_signals_exist(session)
+            save_aggregated_data(session, aggregated_data)
     except ValueError:
         print("Data inválida. Use o formato YYYY-MM-DD.")
+    finally:
+        print('\033[30;42mTodos os dados salvos com sucesso! ;)\033[m')

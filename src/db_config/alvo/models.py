@@ -1,4 +1,4 @@
-from src.db_config.fonte.database import Base
+from .database import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Float, DateTime, Integer, String, ForeignKey
 
@@ -8,7 +8,7 @@ class Signal(Base):
     
     id = Column(Integer, primary_key=True)
     name = Column(String, index=True)    
-    data = relationship("DataTarget", back_populates="signal")
+    data = relationship("Data", back_populates="signal")
 
 
 class Data(Base):
@@ -18,4 +18,5 @@ class Data(Base):
     timestamp = Column(DateTime)
     signal_id = Column(Integer, ForeignKey('signal.id'))
     value = Column(Float)
+    agg_type = Column(String)
     signal = relationship("Signal", back_populates="data")
