@@ -1,10 +1,11 @@
+from sqlalchemy import Column, DateTime, Float, Integer
+
 from src.db_config.fonte.database import Base
-from sqlalchemy import Column, Float, DateTime, Integer
 
 
 class Data(Base):
-    __tablename__ = 'data'
-    
+    __tablename__ = "data"
+
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime)
     ambient_temperature = Column(Float)
